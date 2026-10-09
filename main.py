@@ -64,10 +64,28 @@ def load_effective_config(cli_overrides: list[str]) -> dict[str, Any]:
         if isinstance(yaml_layer, dict):
             config.update(normalize_layer(yaml_layer))
 
-    # Layer 3: .env file. NUM_WORKERS is an assignment-specific alias.
+
+    # Layer 3: .env file
     env_path = BASE_DIR / ".env"
-    dotenv_layer = {k: v for k, v in dotenv_values(env_path).items() if v is not None}
+
+    dotenv_layer = {
+        k: v
+        for k, v in dotenv_values(env_path).items()
+        if v is not None
+    }
+
+    # Map APP_ variables to their actual configuration keys.
+    # APP_PORT -> port
+    # APP_DEBUG -> debug
+    # APP_LOG_LEVEL -> log_level
+    dotenv_layer = {
+        (key[4:] if key.startswith("APP_") else key): value
+        for key, value in dotenv_layer.items()
+    }
+
+    # Apply .env values over YAML and defaults.
     config.update(normalize_layer(dotenv_layer))
+
 
     # Layer 4: process/OS environment variables prefixed with APP_.
     os_layer: dict[str, Any] = {}
